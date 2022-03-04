@@ -1,0 +1,21 @@
+version: 0.0
+
+os: linux
+
+hooks:
+   ApplicationStop:
+     - location: Scripts/Stop.sh
+       timeout: 180
+   BeforeInstall:
+     - location: Scripts/CleanUp.sh
+       timeout: 180
+   AfterInstall:
+     - location: Scripts/npm_build.sh
+       timeout: 800
+   
+files:
+  - source: /
+    destination: /home/ubuntu/website-api
+    fileExistsBehavior: OVERWRITE
+
+

@@ -1,0 +1,357 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  binaryTargets   = ["native", "rhel-openssl-1.0.x"]
+  previewFeatures = ["referentialActions"]
+}
+
+model Admin {
+  id                   Int         @id @default(autoincrement())
+  uid                  String      @unique @default(uuid())
+  email                String      @unique
+  firstName            String?
+  lastName             String?
+  profileImage         String?
+  password             String
+  role_id              String?
+  role                 USER_ROLES  @default(MEMBER)
+  isActivated          Int         @default(0)
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @default(now())
+  pages                Page[]
+  passwordResetToken   String?
+  passwordResetExpires DateTime?
+  passwordChangedAt    DateTime?
+  insights             Insight[]
+  caseStudies          CaseStudy[]
+
+  adminRole Roles? @relation(fields: [role_id], references: [uid])
+
+  @@map("admins")
+}
+
+model WebsiteSettings {
+  id                 Int     @id @default(autoincrement())
+  logo               String?
+  favicon            String?
+  banner             String?
+  metaDescription    String?
+  keywords           String?
+  Author             String?
+  privacyPolicy      String?
+  legal              String?
+  termsAndConditions String?
+
+  @@map("websiteSettings")
+}
+
+model Career {
+  id               Int               @id @default(autoincrement())
+  title            String
+  type             String // remote, on-site or hybrid
+  country          String
+  city             String
+  description      String
+  requirements     String
+  responsibilities String
+  benefits         String
+  seoTitle         String?
+  slug             String?
+  metaDescription  String?
+  status           Int               @default(1) //0 for archived, 1 for active, 2 for closed
+  category         String?
+  CareerApplicant  CareerApplicant[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @default(now())
+
+  @@map("career")
+}
+
+model CareerApplicant {
+  id          Int      @id @default(autoincrement())
+  fullName    String
+  email       String
+  phoneNumber String
+  message     String
+  cv          String
+  Career      Career[] @relation(fields: [CareerId], references: [id])
+  CareerId    Int
+  createdAt   DateTime @default(now())
+
+  @@map("CareerApplicants")
+}
+
+model Client {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String
+  category    Int      @default(1)
+  logo        String
+  status      Int      @default(1) //0 for draft, 1 for published
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+}
+
+// model Role {
+//   id  Int    @id @default(autoincrement())
+//   rid String @unique @default(uuid())
+model Page {
+  id          Int         @id @default(autoincrement())
+  pageId      String      @unique @default(uuid())
+  title       String      @unique
+  slug        String?
+  pageAuthor  Int
+  author      Admin       @relation(fields: [pageAuthor], references: [id], onDelete: Cascade)
+  status      PAGE_STATUS @default(IN_DRAFT)
+  template    Template?
+  pageHits    Int         @default(0)
+  deleteDate  BigInt?
+  publishedAt String?
+  updatedAt   String?
+  createdAt   DateTime    @default(now())
+  menuId      Int?
+  SubCategory SubCategory? @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  @@map("pages")
+}
+
+model Template {
+  id           Int           @id @default(autoincrement())
+  name         PAGE_TEMPLATE
+  heroSection  Content?
+  sectionCount Int
+  sections     Section[]
+  pageTemplate Int           @unique
+  page         Page          @relation(fields: [pageTemplate], references: [id], onDelete: Cascade)
+
+  @@map("templates")
+}
+
+model Section {
+  id               Int          @id @default(autoincrement())
+  sectionId        String       @unique @default(uuid())
+  sectionHeading1  String?
+  sectionHeading2  String?
+  sectionSynopsis  String?      @db.VarChar(3555)
+  sectionImage     String?
+  sectionCtaText   String?
+  sectionCtaUrl    String?
+  sectionType      SECTION_TYPE
+  sectionHierarchy Int
+  sectionContents  Content[]
+  sectionTemplate  Int?
+  template         Template?    @relation(fields: [sectionTemplate], references: [id], onDelete: Cascade)
+
+  @@map("sections")
+}
+
+model Content {
+  id                  Int       @id @default(autoincrement())
+  contentId           String    @unique @default(uuid())
+  contentHeading      String?
+  contentSynopsis     String?   @db.VarChar(3555)
+  contentImage        String?
+  contentCtaText      String?
+  contentCtaUrl       String?
+  contentLogo         String?
+  contentIcon         String?
+  sectionContent      Int?
+  sectionContents     Section?  @relation(fields: [sectionContent], references: [id], onDelete: Cascade)
+  templateHero        Int?      @unique
+  templateHeroSection Template? @relation(fields: [templateHero], references: [id], onDelete: Cascade)
+
+  @@map("contents")
+}
+
+model Roles {
+  id          Int           @id @default(autoincrement())
+  uid         String        @unique @default(uuid())
+  title       String
+  permissions PERMISSIONS[]
+  isActivated Int           @default(1)
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @default(now())
+
+  Admin Admin[]
+  @@map("roles")
+}
+
+model MenuCategory {
+  id             Int           @id @default(autoincrement())
+  name           String        @unique
+  slug           String        @unique
+  status         PAGE_STATUS   @default(IN_DRAFT)
+  sorter         Int?          
+  sub_categories SubCategory[]
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @default(now())
+  partners       Partner[]
+}
+
+model Gallery {
+  id         Int         @id @default(autoincrement())
+  imageName  String?     @unique
+  created_at DateTime    @default(now())
+  updated_at DateTime    @default(now())
+  partner    Partner[]
+  insights   Insight[]
+  case_study CaseStudy[]
+}
+
+model Partner {
+  id          Int           @id @default(autoincrement())
+  name        String        @unique
+  description String
+  Category    MenuCategory? @relation(fields: [categoryId], references: [id])
+  categoryId  Int?
+  imageUrl    Gallery?      @relation(fields: [galleryId], references: [id])
+  galleryId   Int?
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @default(now())
+}
+
+model SubCategory {
+  id         Int           @id @default(autoincrement())
+  name       String        @unique
+  slug       String        @unique
+  status     PAGE_STATUS   @default(IN_DRAFT)
+  Category   MenuCategory? @relation(fields: [categoryId], references: [id])
+  categoryId Int?
+  page       Page[]
+  created_at DateTime      @default(now())
+  updated_at DateTime      @default(now())
+}
+
+model CaseStudy {
+  id              Int       @id @default(autoincrement())
+  title           String
+  body            String
+  tags            String[]
+  seoTitle        String?
+  slug            String    @unique
+  publishedStatus Int       @default(0) //1 = published, 0 = draft or not-published
+  views           Int       @default(0)
+  publishedOn     DateTime?
+  createdBy       Admin?    @relation(fields: [adminId], references: [id]) //Admin id
+  adminId         Int?
+  Gallery         Gallery?  @relation(fields: [galleryId], references: [id])
+  galleryId       Int?
+  createdAt       DateTime  @default(now())
+  deletedAt       DateTime?
+
+  @@map("case_studies")
+}
+
+model Insight {
+  id              Int       @id @default(autoincrement())
+  title           String
+  body            String
+  tags            String[]
+  seoTitle        String?
+  slug            String    @unique
+  publishedStatus Int       @default(0) //1 = published, 0 = draft / not published
+  views           Int       @default(0)
+  publishedOn     DateTime?
+  createdBy       Admin?    @relation(fields: [adminId], references: [id]) //Admin id
+  adminId         Int?
+  Gallery         Gallery?  @relation(fields: [galleryId], references: [id])
+  galleryId       Int?
+  createdAt       DateTime  @default(now())
+  deletedAt       DateTime?
+
+  @@map("insights")
+}
+
+model Contact {
+  id              Int       @id @default(autoincrement())
+  fullName        String 
+  email           String
+  phoneNumber     String?
+  country         String?
+  message         String
+  createdAt       DateTime  @default(now())
+  deletedAt       DateTime?
+
+  @@map("contactUs")
+}
+
+model WebsiteVisitors {
+  id    Int     @id @default(autoincrement())
+  browser String
+  ip  String
+  location String
+  createdAt  DateTime  @default(now())
+
+  @@map("websiteVisitors")
+}
+
+
+enum PERMISSIONS {
+  FULL_ACCESS
+
+  // app permissions
+
+  // user permissions
+  CAN_CREATE_USER
+  CAN_READ_USER
+  CAN_EDIT_USER
+  CAN_FULL_EDIT_USER
+  CAN_DELETE_USER
+
+  // Page permissions
+  CAN_CREATE_PAGE
+  CAN_EDIT_PAGE
+  CAN_DELETE_PAGE
+
+
+
+
+  // role permissions
+  CAN_CREATE_ROLE
+  CAN_READ_ROLE
+  CAN_READ_ALL_ROLE
+  CAN_EDIT_ROLE
+  CAN_DELETE_ROLE
+  CAN_READ_PERMISSIONS
+  CAN_UPDATE_PERMISSIONS
+}
+
+enum PAGE_TEMPLATE {
+  HOME_PAGE
+  HOW_WE_WORK
+  ABOUT_US
+  CSR
+  SERVICE_1
+  SERVICE_2
+  PORTFOLIO
+  INDUSTRIES
+  OFFSHORE
+  PUBLIC_SERVICE
+  PARTNERS
+  HIRE_EMPLOYEES
+  TECH_AND_EXPERTISE
+  OUR_CLIENT
+}
+
+enum PAGE_STATUS {
+  PUBLISHED
+  IN_DRAFT
+  DELETED
+}
+
+enum SECTION_TYPE {
+  SECTION_WITH_BLACK_BACKGROUND
+  SECTION_WITH_WHITE_BACKGROUND
+  SECTION_WITH_BACKGROUND_IMAGE
+  SECTION_WITH_NO_BACKGROUND
+}
+
+enum USER_ROLES {
+  MEMBER
+  GUEST
+  ADMIN
+}
